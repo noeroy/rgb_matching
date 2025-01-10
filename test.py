@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+import pandas as pd
 from matplotlib.backend_bases import MouseEvent
 from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_conversions import convert_color
@@ -133,5 +134,5 @@ def load_image_and_click(image_path):
     plt.show()
 
 # Example usage: Replace with your image path
-image_path = 'hand.jpg'  # Replace with your image path
+image_path = 'hand_noe.jpg'  # Replace with your image path
 load_image_and_click(image_path)
