@@ -5,16 +5,35 @@ import pandas as pd
 from matplotlib.backend_bases import MouseEvent
 from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_conversions import convert_color
+from cie2000 import CIEDE2000
+
+import tkinter as tk
+from tkinter.filedialog import askopenfilename
+
 
 palette_df = pd.read_csv("skin_chart_loreal.csv", header=None, names=["color","R","G","B"])
+
+# palette_df = pd.read_csv("fitzpatrick_gpt.csv", header=None, names=["color","R","G","B"])
+
 palette_df["RGB"] = list(zip(palette_df["R"], palette_df["G"], palette_df["B"]))
 colors = palette_df["RGB"].tolist()
 names = palette_df["color"].tolist()
 
+def load_palette(is_loreal):
+    if is_loreal:
+        palette_df = pd.read_csv("skin_chart_loreal.csv", header=None, names=["color","R","G","B"])
+
+    else: 
+        palette_df = pd.read_csv("fitzpatrick_gpt.csv", header=None, names=["color","R","G","B"])
+
+    palette_df["RGB"] = list(zip(palette_df["R"], palette_df["G"], palette_df["B"]))
+    colors = palette_df["RGB"].tolist()
+    names = palette_df["color"].tolist()
+    return colors, names    
+
 def distance_lab(lab1, lab2):
-    return np.sqrt(pow(lab1.lab_l - lab2.lab_l,2)+pow(lab1.lab_a - lab2.lab_a,2)+pow(lab1.lab_b - lab2.lab_b,2))
-
-
+    # return np.sqrt(pow(lab1.lab_l - lab2.lab_l,2)+pow(lab1.lab_a - lab2.lab_a,2)+pow(lab1.lab_b - lab2.lab_b,2))
+    return CIEDE2000(lab1.get_value_tuple(), lab2.get_value_tuple())
 # Assuming 'colors' and 'names' are defined already as in previous code
 
 # Step 1: Function to convert RGB to Lab
@@ -23,18 +42,21 @@ def rgb_to_lab(rgb):
     return convert_color(srgb, LabColor)
 
 # Step 2: Function to find the closest color in the palette
-def closest_color_in_palette(input_rgb):
+def closest_color_in_palette(input_rgb, colors, names):
     input_lab = rgb_to_lab(input_rgb)
     
     closest_tone = None
     smallest_distance = float('inf')
     
     distances = []
+
+    
     
     # Loop through the palette and calculate the Euclidean distance in Lab space
     for color, name in zip(colors, names):
         color_lab = rgb_to_lab(color)
         distance = distance_lab(input_lab, color_lab)
+        # print(name,color_lab,input_lab, distance)
         distances.append((distance, name))  # Store the distance and name as a tuple
         
         if distance < smallest_distance:
@@ -44,24 +66,41 @@ def closest_color_in_palette(input_rgb):
     return closest_tone, distances
 
 # Step 3: Function to plot the three panels
-def plot_comparison(input_rgb):
+def plot_comparison(input_rgb, is_loreal=True):
+
     # Step 3.1: Get the closest color and the distances
-    closest_tone, distances = closest_color_in_palette(input_rgb)
+    colors, names = load_palette(is_loreal)
+    closest_tone, distances = closest_color_in_palette(input_rgb, colors, names)
 
     # Step 3.2: Set up the figure with 3 panels
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
     # Panel 1: Color Palette
     ax1 = axes[0]
-    ax1.set_xlim(0, 6)
-    ax1.set_ylim(0, 11)
+    if (is_loreal):
+        ax1.set_xlim(0, 6)
+        ax1.set_ylim(0, 11)
+    else:
+        ax1.set_xlim(0, 1)
+        ax1.set_ylim(0, 6)
     for i, (color, name) in enumerate(zip(colors, names)):
-        row = i // 6
-        col = i % 6
+        if (is_loreal):
+            row = i // 6
+            col = i % 6
+        else :
+            row = i
+            col = 0
+
         normalized_color = [c / 255 for c in color]
-        rect = plt.Rectangle((col, 10 - row), 1, 1, color=normalized_color)
+        if (is_loreal):
+            rect = plt.Rectangle((col, 10 - row), 1, 1, color=normalized_color)
+        else:
+            rect = plt.Rectangle((col, 5 - row), 1, 1, color=normalized_color)
         ax1.add_patch(rect)
-        ax1.text(col + 0.5, 10 - row + 0.5, name, ha="center", va="center", fontsize=8, color="white" if sum(color) < 400 else "black")
+        if is_loreal:
+            ax1.text(col + 0.5, 10 - row + 0.5, name, ha="center", va="center", fontsize=8, color="white" if sum(color) < 400 else "black")
+        else:
+            ax1.text(col + 0.5, 5 - row + 0.5, name, ha="center", va="center", fontsize=8, color="white" if sum(color) < 400 else "black")
     ax1.set_aspect("equal")
     ax1.axis("off")
     ax1.set_title("Color Palette")
@@ -78,14 +117,21 @@ def plot_comparison(input_rgb):
 
     # Panel 3: Difference Heatmap
     ax3 = axes[2]
-    ax3.set_xlim(-1, 6)
-    ax3.set_ylim(-1, 11)
+    if (is_loreal):
+        ax3.set_xlim(-1, 6)
+        ax3.set_ylim(-1, 11)
+    else:
+        ax3.set_xlim(-1, 1)
+        ax3.set_ylim(-1, 6)
 
     # Extract only the distance values for the heatmap
     distance_values = [d[0] for d in distances]
     
     # Reshape to match the palette grid size (11 rows, 6 columns)
-    difference_grid = np.array(distance_values).reshape(11, 6)
+    if is_loreal:
+        difference_grid = np.array(distance_values).reshape(11, 6)
+    else:
+        difference_grid = np.array(distance_values).reshape(6, 1)
 
     # Flip the grid vertically so that the top is at the top and the bottom at the bottom
     difference_grid = np.flipud(difference_grid)
@@ -95,10 +141,17 @@ def plot_comparison(input_rgb):
 
     # Annotate with color names and highlight the closest color
     for i, (distance, name) in enumerate(distances):
-        row = i // 6
-        col = i % 6
+        if (is_loreal):
+            row = i // 6
+            col = i % 6
+            max_row=10
+        else:
+            row = i
+            col = 0
+            max_row = 5
+
         # Adjusting the text position to be centered in the cells
-        ax3.text(col, 10 - row, name, ha="center", va="center", fontsize=8, color="red" if name == closest_tone else "white", fontweight="bold" if name == closest_tone else "normal")
+        ax3.text(col, max_row - row, name, ha="center", va="center", fontsize=8, color="red" if name == closest_tone else "white", fontweight="bold" if name == closest_tone else "normal")
     
     ax3.set_aspect("equal")
     ax3.axis("off")
@@ -110,7 +163,7 @@ def plot_comparison(input_rgb):
     plt.show()
 
 # Step 4: Function to load and display the image, and capture clicks
-def load_image_and_click(image_path):
+def load_image_and_click(image_path, is_loreal=True):
     img = plt.imread(image_path)
     
     fig, ax = plt.subplots()
@@ -126,7 +179,12 @@ def load_image_and_click(image_path):
         print(f"Clicked at: {x}, {y}, RGB: {rgb}")
         
         # Call the comparison plot function
-        plot_comparison(rgb)
+        
+       
+        plot_comparison(rgb, True)
+        plot_comparison(rgb, False)
+        # reload_palette(False)
+        # plot_comparison(rgb, False)
 
     # Connect the click event to the handler
     fig.canvas.mpl_connect('button_press_event', on_click)
@@ -134,5 +192,12 @@ def load_image_and_click(image_path):
     plt.show()
 
 # Example usage: Replace with your image path
-image_path = 'hand_noe.jpg'  # Replace with your image path
-load_image_and_click(image_path)
+# image_path = 'hand_noe.jpg'  # Replace with your image path
+# image_path = 'hand_kay.jpg'  # Replace with your image path
+tk.Tk().withdraw() # part of the import if you are not using other tkinter functions
+
+fn = askopenfilename()
+print("user chose", fn)
+
+is_loreal=False
+load_image_and_click(fn)
