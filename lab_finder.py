@@ -204,6 +204,7 @@ if len(argv) == 4:
     print(l,l+1)
     input_lab = LabColor(l,a,b)
     plot_comparison(input_lab, True)
+    plot_comparison(input_lab, False)
 else:  
     print("Usage: python lab_finder.py <L> <a> <b>")
 
