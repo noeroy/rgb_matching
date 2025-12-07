@@ -14,10 +14,10 @@ from tkinter.filedialog import askopenfilename
 
 def load_palette(is_loreal):
     if is_loreal:
-        palette_df = pd.read_csv("skin_chart_loreal.csv", header=None, names=["color","R","G","B"])
+        palette_df = pd.read_csv("assets/skin_chart_loreal.csv", header=None, names=["color","R","G","B"])
 
     else: 
-        palette_df = pd.read_csv("fitzpatrick_gpt.csv", header=None, names=["color","R","G","B"])
+        palette_df = pd.read_csv("assets/skin_chart_fitzpatrick.csv", header=None, names=["color","R","G","B"])
 
     palette_df["RGB"] = list(zip(palette_df["R"], palette_df["G"], palette_df["B"]))
     colors = palette_df["RGB"].tolist()
