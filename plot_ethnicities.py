@@ -80,7 +80,7 @@ def plot_L_vs_b( ax, filename, back=True, title_prefix="Skin Tone Analysis", alp
     #         ha='center', va='bottom', fontsize=10, fontweight='bold')
     ax.set_xlabel("b*  (blue–yellow)")
     ax.set_ylabel("L* (lightness)")
-    ax.set_title(f"{title_prefix} — L* vs b*")
+    ax.set_title(f"{title_prefix} — N={len(input_lab)}")
     ax.set_xlim(0, 65)
     ax.set_ylim(10, 100)
     ax.grid(True, alpha=0.3)
