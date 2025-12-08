@@ -65,6 +65,8 @@ def plot_L_vs_b( ax, filename, back=True, title_prefix="Skin Tone Analysis", alp
     Plot L* vs a* and L* vs b* side by side for palette colors and input RGB.
     """
     data = np.loadtxt("assets/"+filename,delimiter=",")
+    if data.shape == (6,):
+        data = data.reshape((1,6))
     if back:
         input_lab = lab_color_parallel(data[:,0],data[:,1],data[:,2])
     else : 
